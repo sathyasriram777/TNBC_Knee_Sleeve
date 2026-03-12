@@ -43,36 +43,36 @@ export function UpdatePasswordForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Reset Your Password</CardTitle>
-          <CardDescription>
-            Please enter your new password below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleForgotPassword}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="password">New password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="New password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+    <div className="flex flex-col gap-6">
+      <h3 className="text-2xl font-bold text-center">Reset Your Password</h3>
+      <div className={cn("flex flex-col gap-6", className)} {...props}>
+        <Card className="bg-muted max-w-lg w-full mx-auto">
+          <CardContent className="p-8">
+            <form onSubmit={handleForgotPassword}>
+              <div className="flex flex-col gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="password">New password</Label>
+                  <Input
+                    className="bg-background rounded-lg"
+                    id="password"
+                    type="password"
+                    placeholder="New password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                {error && <p className="text-sm text-red-500">{error}</p>}
+                <div className="flex justify-center">
+                  <Button className="bg-primary text-primary-foreground rounded-lg px-8" type="submit" disabled={isLoading}>
+                    {isLoading ? "Saving..." : "Save new password"}
+                  </Button>
+                </div>
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save new password"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
