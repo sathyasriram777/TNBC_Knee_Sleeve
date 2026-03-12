@@ -7,8 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function ProfileInfo() {
-  const [name, setName] = useState("Susan Crawford");
+type ProfileInfoProps = {
+  initialName?: string | null;
+};
+
+export function ProfileInfo({ initialName = null }: ProfileInfoProps) {
+  const [name, setName] = useState(initialName ?? "");
 
   return (
     <Card className="bg-muted w-full">

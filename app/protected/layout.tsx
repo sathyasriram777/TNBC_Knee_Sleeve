@@ -13,7 +13,9 @@ export default function ProtectedLayout({
     ? "Profile"
     : pathname?.endsWith("/diagnostics")
       ? "Diagnostics"
-      : "Dashboard";
+      : pathname?.endsWith("/get-data")
+        ? "Get Data"
+        : "Dashboard";
 
   return (
     <main className="flex flex-col">

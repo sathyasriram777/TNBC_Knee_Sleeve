@@ -7,31 +7,48 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { addPatientAction, deletePatientAction } from "@/app/protected/profile/actions";
+import type { PatientListItem } from "@/lib/queries/profile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-const initialPatients: { id: string; name: string }[] = [];
+type PatientsProps = {
+  initialPatients: PatientListItem[];
+};
 
-export function Patients() {
-  const [patients, setPatients] = useState(initialPatients);
+export function Patients({ initialPatients }: PatientsProps) {
+  const router = useRouter();
+  const [patients, setPatients] = useState<PatientListItem[]>(initialPatients);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newPatientName, setNewPatientName] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
 
-  const handleAddPatient = () => {
+  const handleAddPatient = async () => {
     const name = newPatientName.trim();
     if (!name) return;
-    setPatients((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), name },
-    ]);
-    setNewPatientName("");
-    setShowAddForm(false);
+    setAddError(null);
+    setIsAdding(true);
+    const result = await addPatientAction(name);
+    setIsAdding(false);
+    if (result.success) {
+      setPatients((prev) => [...prev, result.patient]);
+      setNewPatientName("");
+      setShowAddForm(false);
+      router.push(`/protected/get-data?patient=${result.patient.id}`);
+    } else {
+      setAddError(result.error);
+    }
   };
 
-  const handleDeletePatient = (id: string) => {
-    setPatients((prev) => prev.filter((p) => p.id !== id));
+  const handleDeletePatient = async (id: string) => {
+    const result = await deletePatientAction(id);
+    if (result.success) {
+      setPatients((prev) => prev.filter((p) => p.id !== id));
+    }
   };
 
   return (
@@ -65,32 +82,46 @@ export function Patients() {
           </div>
         ))}
         {showAddForm && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background px-4 py-3">
-            <Input
-              value={newPatientName}
-              onChange={(e) => setNewPatientName(e.target.value)}
-              placeholder="Patient name"
-              className="flex-1 min-w-[120px] bg-background"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddPatient();
-                if (e.key === "Escape") setShowAddForm(false);
-              }}
-              autoFocus
-            />
-            <Button type="button" size="sm" onClick={handleAddPatient}>
-              Add
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setShowAddForm(false);
-                setNewPatientName("");
-              }}
-            >
-              Cancel
-            </Button>
+          <div className="space-y-2 rounded-lg border border-border bg-background px-4 py-3">
+            {addError && (
+              <p className="text-sm text-destructive">{addError}</p>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={newPatientName}
+                onChange={(e) => {
+                  setNewPatientName(e.target.value);
+                  setAddError(null);
+                }}
+                placeholder="Patient name"
+                className="flex-1 min-w-[120px] bg-background"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddPatient();
+                  if (e.key === "Escape") setShowAddForm(false);
+                }}
+                autoFocus
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleAddPatient}
+                disabled={isAdding}
+              >
+                {isAdding ? "Adding…" : "Add"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setShowAddForm(false);
+                  setNewPatientName("");
+                  setAddError(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         )}
         <Button

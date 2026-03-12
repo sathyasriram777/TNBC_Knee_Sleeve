@@ -59,6 +59,20 @@ export async function getPatientsByUserId(userId: string): Promise<PatientListIt
 }
 
 /**
+ * Get a single patient by ID only if they belong to the given user.
+ */
+export async function getPatientByIdForUser(
+  patientId: string,
+  userId: string
+): Promise<PatientListItem | null> {
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, userId },
+    select: { id: true, name: true },
+  });
+  return patient;
+}
+
+/**
  * Update the current user's display name.
  */
 export async function updateUserName(userId: string, name: string): Promise<Profile | null> {
