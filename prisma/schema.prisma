@@ -16,10 +16,35 @@ model User {
 }
 
 model Patient {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions  Session[]
+}
+
+model Session {
+  id        String          @id @default(uuid())
+  patientId String
+  patient   Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  status    String          @default("recording")
+  createdAt DateTime        @default(now())
+  updatedAt DateTime         @updatedAt
+  stoppedAt DateTime?
+  payloads  SensorPayload[]
+
+  @@index([patientId, createdAt])
+}
+
+model SensorPayload {
+  id        String   @id @default(uuid())
+  data      Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
 }

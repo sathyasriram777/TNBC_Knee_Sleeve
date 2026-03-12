@@ -2,21 +2,28 @@ import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export interface PatientInfoCardProps {
-  name?: string;
-  patientId?: string;
-  age?: number;
-  emgActivity?: string;
-  rangeOfMotion?: string;
-  motorSkillExercises?: string;
+  /** From DB */
+  name?: string | null;
+  patientId?: string | null;
+  /** Not in DB yet – leave blank if not provided */
+  age?: number | null;
+  emgActivity?: string | null;
+  rangeOfMotion?: string | null;
+  motorSkillExercises?: string | null;
+}
+
+function formatValue(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "";
+  return String(value);
 }
 
 export function PatientInfoCard({
-  name = "John Doe",
-  patientId = "001PD24",
-  age = 35,
-  emgActivity = "Irregular Muscular Activity",
-  rangeOfMotion = "............",
-  motorSkillExercises = "Exercises for hand dexterity and coordination",
+  name,
+  patientId,
+  age,
+  emgActivity,
+  rangeOfMotion,
+  motorSkillExercises,
 }: PatientInfoCardProps) {
   return (
     <Card className="border-0 bg-white w-full h-full flex flex-col">
@@ -33,27 +40,27 @@ export function PatientInfoCard({
         <CardTitle className="text-primary mt-2">Patient Information</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 px-8 pb-8 flex-1">
-        <p className="font-medium text-foreground">{name}</p>
+        <p className="font-medium text-foreground">{formatValue(name)}</p>
         <dl className="space-y-2 text-sm">
           <div>
             <dt className="font-semibold text-foreground">Patient ID:</dt>
-            <dd className="text-muted-foreground">{patientId}</dd>
+            <dd className="text-muted-foreground">{formatValue(patientId)}</dd>
           </div>
           <div>
             <dt className="font-semibold text-foreground">Age:</dt>
-            <dd className="text-muted-foreground">{age}</dd>
+            <dd className="text-muted-foreground">{formatValue(age)}</dd>
           </div>
           <div>
             <dt className="font-semibold text-foreground">EMG Activity:</dt>
-            <dd className="text-muted-foreground">{emgActivity}</dd>
+            <dd className="text-muted-foreground">{formatValue(emgActivity)}</dd>
           </div>
           <div>
             <dt className="font-semibold text-foreground">Range of Motion:</dt>
-            <dd className="text-muted-foreground">{rangeOfMotion}</dd>
+            <dd className="text-muted-foreground">{formatValue(rangeOfMotion)}</dd>
           </div>
           <div>
             <dt className="font-semibold text-foreground">Motor Skill Exercises:</dt>
-            <dd className="text-muted-foreground">{motorSkillExercises}</dd>
+            <dd className="text-muted-foreground">{formatValue(motorSkillExercises)}</dd>
           </div>
         </dl>
       </CardContent>

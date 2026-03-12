@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "./generated/prisma/client";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
@@ -20,8 +20,29 @@ function createPrismaClient(): PrismaClient {
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+/** Returns true if this client has Session model (from our generated schema). */
+function hasSessionModel(client: PrismaClient): boolean {
+  return typeof (client as unknown as { session?: { findFirst?: unknown } }).session?.findFirst === "function";
 }
+
+function getPrisma(): PrismaClient {
+  const cached = globalForPrisma.prisma;
+  if (cached && hasSessionModel(cached)) {
+    return cached;
+  }
+  if (cached && !hasSessionModel(cached)) {
+    globalForPrisma.prisma = undefined;
+  }
+  const client = createPrismaClient();
+  if (!hasSessionModel(client)) {
+    throw new Error(
+      "Prisma client missing Session model. Run: npx prisma generate"
+    );
+  }
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = client;
+  }
+  return client;
+}
+
+export const prisma = getPrisma();

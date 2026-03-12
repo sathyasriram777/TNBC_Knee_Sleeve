@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getPatientByIdForUser } from "@/lib/queries/profile";
+import {
+  getLatestSessionForPatient,
+  getPayloadsBySessionId,
+} from "@/lib/queries/get-data";
 import { GetDataCard } from "@/components/get-data-cards";
 import { Button } from "@/components/ui/button";
 
@@ -38,9 +42,32 @@ export default async function GetDataPage({
     );
   }
 
+  const latestSession = await getLatestSessionForPatient(patient.id);
+  const initialPayloads = latestSession
+    ? await getPayloadsBySessionId(latestSession.id)
+    : [];
+
   return (
     <div className="flex flex-col gap-8">
-      <GetDataCard patientId={patient.id} />
+      <GetDataCard
+        patientId={patient.id}
+        initialSession={
+          latestSession
+            ? {
+                id: latestSession.id,
+                status: latestSession.status,
+                createdAt: latestSession.createdAt.toISOString(),
+                updatedAt: latestSession.updatedAt.toISOString(),
+                payloadCount: latestSession._count.payloads,
+              }
+            : null
+        }
+        initialPayloads={initialPayloads.map((p: { id: string; data: unknown; createdAt: Date }) => ({
+          id: p.id,
+          data: p.data,
+          createdAt: p.createdAt.toISOString(),
+        }))}
+      />
     </div>
   );
 }
