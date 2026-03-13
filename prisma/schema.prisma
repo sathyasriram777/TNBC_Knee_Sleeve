@@ -7,10 +7,16 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserType {
+  Clinician
+  Patient
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
   name      String?
+  type      UserType @default(Patient)
   createdAt DateTime @default(now())
   patients  Patient[]
 }

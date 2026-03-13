@@ -103,6 +103,23 @@ export async function stopSession(
 }
 
 /**
+ * Delete a session (report). Only deletes if the session's patient belongs to the given user.
+ * Use for patient users deleting their own reports.
+ */
+export async function deleteSessionForUser(
+  sessionId: string,
+  userId: string
+): Promise<boolean> {
+  const result = await prisma.session.deleteMany({
+    where: {
+      id: sessionId,
+      patient: { userId },
+    },
+  });
+  return result.count > 0;
+}
+
+/**
  * Insert a sensor payload for a session.
  * Caller must have verified the session exists and is still recording.
  */

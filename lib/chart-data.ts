@@ -19,7 +19,21 @@ export type ImuChartPoint = {
   ax: number;
   ay: number;
   az: number;
+  /** Angle from atan2(ay, az) in degrees */
+  ang1?: number;
+  /** Angle from atan2(az, ay) in degrees */
+  ang2?: number;
 };
+
+const RAD2DEG = 180 / Math.PI;
+
+/** Compute ang1 = atan2(ay, az) and ang2 = atan2(az, ay) in degrees. */
+export function imuAnglesFromAyAz(ay: number, az: number): { ang1: number; ang2: number } {
+  return {
+    ang1: Math.atan2(ay, az) * RAD2DEG,
+    ang2: Math.atan2(az, ay) * RAD2DEG,
+  };
+}
 
 function getPayloadData(p: PayloadRow): Record<string, unknown> {
   const d = p.data;

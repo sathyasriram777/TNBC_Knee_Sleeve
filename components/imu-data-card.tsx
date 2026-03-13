@@ -16,10 +16,27 @@ import type { ImuChartPoint } from "@/lib/chart-data";
 
 type ImuDataCardProps = {
   data?: ImuChartPoint[];
+  /** Set true for live/streaming data so the chart redraws in real time without animation. */
+  live?: boolean;
 };
 
-export function ImuDataCard({ data = [] }: ImuDataCardProps) {
+function angleStats(points: ImuChartPoint[]) {
+  const withAng1 = points.filter((p) => p.ang1 != null) as (ImuChartPoint & { ang1: number })[];
+  const withAng2 = points.filter((p) => p.ang2 != null) as (ImuChartPoint & { ang2: number })[];
+  const last = points[points.length - 1];
+  return {
+    ang1: last?.ang1 ?? null,
+    ang2: last?.ang2 ?? null,
+    ang1Min: withAng1.length ? Math.min(...withAng1.map((p) => p.ang1)) : null,
+    ang1Max: withAng1.length ? Math.max(...withAng1.map((p) => p.ang1)) : null,
+    ang2Min: withAng2.length ? Math.min(...withAng2.map((p) => p.ang2)) : null,
+    ang2Max: withAng2.length ? Math.max(...withAng2.map((p) => p.ang2)) : null,
+  };
+}
+
+export function ImuDataCard({ data = [], live = false }: ImuDataCardProps) {
   const hasData = data.length > 0;
+  const angles = hasData ? angleStats(data) : null;
 
   return (
     <Card className="border-0 bg-white w-full">
@@ -69,6 +86,7 @@ export function ImuDataCard({ data = [] }: ImuDataCardProps) {
                   stroke="#8884d8"
                   strokeWidth={1}
                   dot={false}
+                  isAnimationActive={!live}
                 />
                 <Line
                   type="monotone"
@@ -77,6 +95,7 @@ export function ImuDataCard({ data = [] }: ImuDataCardProps) {
                   stroke="#82ca9d"
                   strokeWidth={1}
                   dot={false}
+                  isAnimationActive={!live}
                 />
                 <Line
                   type="monotone"
@@ -85,6 +104,7 @@ export function ImuDataCard({ data = [] }: ImuDataCardProps) {
                   stroke="#ffc658"
                   strokeWidth={1}
                   dot={false}
+                  isAnimationActive={!live}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -94,6 +114,26 @@ export function ImuDataCard({ data = [] }: ImuDataCardProps) {
             </div>
           )}
         </div>
+        {angles && (angles.ang1 != null || angles.ang2 != null) && (
+          <div className="mt-3 flex flex-wrap gap-6 text-sm text-muted-foreground">
+            {angles.ang1 != null && (
+              <span>
+                ang1: <strong className="text-foreground">{angles.ang1.toFixed(1)}°</strong>
+                {angles.ang1Min != null && angles.ang1Max != null && (
+                  <> (min {angles.ang1Min.toFixed(1)}, max {angles.ang1Max.toFixed(1)})</>
+                )}
+              </span>
+            )}
+            {angles.ang2 != null && (
+              <span>
+                ang2: <strong className="text-foreground">{angles.ang2.toFixed(1)}°</strong>
+                {angles.ang2Min != null && angles.ang2Max != null && (
+                  <> (min {angles.ang2Min.toFixed(1)}, max {angles.ang2Max.toFixed(1)})</>
+                )}
+              </span>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

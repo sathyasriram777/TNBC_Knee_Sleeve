@@ -1,10 +1,14 @@
 import { prisma } from "@/lib/db";
 
-/** Profile data for the current user (name, email) - used by ProfileInfo and AccountSettings */
+/** User type for role-based UI (e.g. clinician vs patient profile). */
+export type ProfileUserType = "Clinician" | "Patient";
+
+/** Profile data for the current user (name, email, type) - used by ProfileInfo and AccountSettings */
 export type Profile = {
   id: string;
   name: string | null;
   email: string;
+  type: ProfileUserType;
 };
 
 /** Minimal patient for list display - used by Patients component */
@@ -20,13 +24,14 @@ export type PatientListItem = {
 export async function getProfileByUserId(userId: string): Promise<Profile | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, type: true },
   });
   if (!user) return null;
   return {
     id: user.id,
     name: user.name,
     email: user.email,
+    type: user.type,
   };
 }
 
@@ -36,13 +41,14 @@ export async function getProfileByUserId(userId: string): Promise<Profile | null
 export async function getProfileByEmail(email: string): Promise<Profile | null> {
   const user = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, type: true },
   });
   if (!user) return null;
   return {
     id: user.id,
     name: user.name,
     email: user.email,
+    type: user.type,
   };
 }
 
@@ -56,6 +62,35 @@ export async function getPatientsByUserId(userId: string): Promise<PatientListIt
     orderBy: { createdAt: "asc" },
   });
   return patients;
+}
+
+/** Report (session) item for list display on patient profile */
+export type ReportListItem = {
+  id: string;
+  patientId: string;
+  status: string;
+  createdAt: Date;
+};
+
+/**
+ * Get all sessions (reports) for the current user when they are a patient.
+ * Returns sessions for the user's single Patient record, newest first.
+ */
+export async function getReportsForPatientUserId(
+  userId: string
+): Promise<ReportListItem[]> {
+  const patient = await prisma.patient.findFirst({
+    where: { userId },
+    select: { id: true },
+  });
+  if (!patient) return [];
+
+  const sessions = await prisma.session.findMany({
+    where: { patientId: patient.id },
+    select: { id: true, patientId: true, status: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+  return sessions;
 }
 
 /**
@@ -79,9 +114,9 @@ export async function updateUserName(userId: string, name: string): Promise<Prof
   const user = await prisma.user.update({
     where: { id: userId },
     data: { name: name.trim() || null },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, type: true },
   });
-  return { id: user.id, name: user.name, email: user.email };
+  return { id: user.id, name: user.name, email: user.email, type: user.type };
 }
 
 /**
@@ -92,9 +127,9 @@ export async function updateUserEmail(userId: string, email: string): Promise<Pr
   const user = await prisma.user.update({
     where: { id: userId },
     data: { email: email.trim() },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, type: true },
   });
-  return { id: user.id, name: user.name, email: user.email };
+  return { id: user.id, name: user.name, email: user.email, type: user.type };
 }
 
 /**
@@ -117,10 +152,3 @@ export async function deletePatient(patientId: string, userId: string): Promise<
   });
   return result.count > 0;
 }
-
-async function testProfileQueries() {
-  console.log("Testing profile queries...");
-  const profile = await getProfileByUserId("7dd47104-c16f-4235-bbd1-792ae80c6066");
-  console.log(profile);
-}
-await testProfileQueries();

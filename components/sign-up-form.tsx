@@ -13,15 +13,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+export type SignUpUserType = "Clinician" | "Patient";
+
 export function SignUpForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
   const [name, setName] = useState("");
-  const [institution, setInstitution] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+  const [userType, setUserType] = useState<SignUpUserType>("Patient");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -43,6 +45,7 @@ export function SignUpForm({
         email,
         password,
         options: {
+          data: { name: name.trim() || undefined, userType },
           emailRedirectTo: `${window.location.origin}/protected`,
         },
       });
@@ -76,17 +79,6 @@ export function SignUpForm({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="institution">Institution (optional)</Label>
-                  <Input
-                    className="bg-background rounded-lg"
-                    id="institution"
-                    type="text"
-                    placeholder="University/Health Center/Hospital"
-                    value={institution}
-                    onChange={(e) => setInstitution(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     className="bg-background rounded-lg"
@@ -99,9 +91,34 @@ export function SignUpForm({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <div className="flex items-center">
-                    <Label htmlFor="password">Password</Label>
+                  <Label>I am a</Label>
+                  <div className="flex gap-6 items-center">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="userType"
+                        value="Patient"
+                        checked={userType === "Patient"}
+                        onChange={() => setUserType("Patient")}
+                        className="h-4 w-4"
+                      />
+                      <span>Patient</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="userType"
+                        value="Clinician"
+                        checked={userType === "Clinician"}
+                        onChange={() => setUserType("Clinician")}
+                        className="h-4 w-4"
+                      />
+                      <span>Clinician</span>
+                    </label>
                   </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Password</Label>
                   <Input
                     className="bg-background rounded-lg"
                     id="password"
@@ -112,9 +129,7 @@ export function SignUpForm({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <div className="flex items-center">
-                    <Label htmlFor="repeat-password">Repeat Password</Label>
-                  </div>
+                  <Label htmlFor="repeat-password">Repeat Password</Label>
                   <Input
                     className="bg-background rounded-lg"
                     id="repeat-password"
