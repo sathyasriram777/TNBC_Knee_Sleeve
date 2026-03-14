@@ -9,7 +9,7 @@ import {
   movingAvg,
   parseBleImuCsv,
 } from "@/lib/ble-imu";
-import { type ImuChartPoint, imuAnglesFromAyAz } from "@/lib/chart-data";
+import { type ImuChartPoint, imuAngles } from "@/lib/chart-data";
 
 interface BleDevice {
   gatt?: { connect(): Promise<BleServer>; disconnect(): void; connected: boolean };
@@ -152,7 +152,7 @@ export function useDualBleImu() {
         }
 
         const time = new Date().toISOString();
-        const { ang1, ang2 } = imuAnglesFromAyAz(ay, az);
+        const { ang1, ang2 } = imuAngles(ax, ay, az);
         refs.pending.push({ time, ax, ay, az, ang1, ang2 });
 
         if (calibrationRecordingRef.current) {
@@ -192,7 +192,10 @@ export function useDualBleImu() {
             bluetooth?: { requestDevice(opts: object): Promise<BleDevice> };
           };
           const device = await nav.bluetooth!.requestDevice({
-            acceptAllDevices: true,
+            filters: [
+              { namePrefix: "Nano" },
+              { namePrefix: "Arduino" },
+            ],
             optionalServices: [BLE_IMU_SERVICE_UUID],
           });
 
@@ -378,3 +381,5 @@ export function useDualBleImu() {
     },
   };
 }
+
+export type DualBleImuReturn = ReturnType<typeof useDualBleImu>;

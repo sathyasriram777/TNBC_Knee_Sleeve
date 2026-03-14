@@ -91,7 +91,7 @@ export function Reports({ initialReports, patientId }: ReportsProps) {
         )}
         {patientId && (
           <Button asChild variant="outline" size="sm" className="w-full mt-2">
-            <Link href={`/protected/get-data?patient=${patientId}`}>
+            <Link href={`/protected/diagnostics?patient=${patientId}`}>
               Record session
             </Link>
           </Button>

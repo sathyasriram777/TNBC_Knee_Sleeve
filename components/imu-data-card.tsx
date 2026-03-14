@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -13,6 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ImuChartPoint } from "@/lib/chart-data";
+
+const DISPLAY_WINDOW = 120;
 
 type ImuDataCardProps = {
   data?: ImuChartPoint[];
@@ -37,6 +40,7 @@ function angleStats(points: ImuChartPoint[]) {
 export function ImuDataCard({ data = [], live = false }: ImuDataCardProps) {
   const hasData = data.length > 0;
   const angles = hasData ? angleStats(data) : null;
+  const chartData = useMemo(() => data.slice(-DISPLAY_WINDOW), [data]);
 
   return (
     <Card className="border-0 bg-white w-full">
@@ -51,7 +55,7 @@ export function ImuDataCard({ data = [], live = false }: ImuDataCardProps) {
           {hasData ? (
             <ResponsiveContainer width="100%" height={280}>
               <LineChart
-                data={data}
+                data={chartData}
                 margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
               >
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />

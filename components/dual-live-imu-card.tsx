@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -15,10 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ImuDataCard } from "@/components/imu-data-card";
-import { useDualBleImu } from "@/hooks/use-dual-ble-imu";
+import type { DualBleImuReturn } from "@/hooks/use-dual-ble-imu";
 import type { BleImuFilterMode } from "@/lib/ble-imu";
 import type { ImuChartPoint } from "@/lib/chart-data";
+import { computeAgitationComparison } from "@/lib/stride-analysis";
 import { cn } from "@/lib/utils";
+
+const DISPLAY_WINDOW = 120;
 
 const FILTER_MODES: { value: BleImuFilterMode; label: string }[] = [
   { value: "raw", label: "Raw" },
@@ -30,7 +33,7 @@ const CALIBRATION_SECONDS = 3;
 
 type SideDisplayProps = {
   side: "left" | "right";
-  points: ReturnType<typeof useDualBleImu>["right"]["points"];
+  points: ImuChartPoint[];
   filterMode: BleImuFilterMode;
   setFilterMode: (m: BleImuFilterMode) => void;
   windowSize: number;
@@ -39,7 +42,7 @@ type SideDisplayProps = {
 
 type SensorControlProps = {
   label: string;
-  status: ReturnType<typeof useDualBleImu>["sensorA"]["status"];
+  status: DualBleImuReturn["sensorA"]["status"];
   statusMessage: string;
   isConnected: boolean;
   onConnect: () => Promise<void>;
@@ -63,18 +66,16 @@ function formatAngle(value: number | null) {
   return value == null ? "--" : `${value.toFixed(1)}°`;
 }
 
-function buildCombinedAngleData(leftPoints: ImuChartPoint[], rightPoints: ImuChartPoint[]) {
+function buildCombinedAngleData(
+  leftPoints: ImuChartPoint[],
+  rightPoints: ImuChartPoint[],
+) {
   const length = Math.max(leftPoints.length, rightPoints.length);
-  return Array.from({ length }, (_, index) => {
-    const left = leftPoints[index];
-    const right = rightPoints[index];
-
-    return {
-      time: right?.time ?? left?.time ?? String(index),
-      leftAng2: left?.ang2 ?? null,
-      rightAng2: right?.ang2 ?? null,
-    };
-  });
+  return Array.from({ length }, (_, i) => ({
+    idx: i,
+    leftAng2: leftPoints[i]?.ang2 ?? null,
+    rightAng2: rightPoints[i]?.ang2 ?? null,
+  }));
 }
 
 function SensorControl({
@@ -207,7 +208,67 @@ function SideDisplay({
   );
 }
 
-export function DualLiveImuCard() {
+type AgitationPanelProps = {
+  leftPoints: ImuChartPoint[];
+  rightPoints: ImuChartPoint[];
+  isClinician: boolean;
+};
+
+function AgitationPanel({ leftPoints, rightPoints, isClinician }: AgitationPanelProps) {
+  const result = useMemo(
+    () => computeAgitationComparison(leftPoints, rightPoints),
+    [leftPoints, rightPoints],
+  );
+
+  return (
+    <Card className="border-0 bg-white">
+      <CardHeader className="px-6 pt-6 pb-3">
+        <CardTitle className="text-foreground text-lg">Compensation check</CardTitle>
+      </CardHeader>
+      <CardContent className="px-6 pb-6 space-y-5">
+        {result ? (
+          <div className="space-y-4 rounded-lg border border-border bg-background p-5">
+            <div className={cn(
+              "flex items-center justify-center rounded-lg py-6 text-2xl font-bold",
+              result.compensating
+                ? "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400"
+                : "bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400",
+            )}>
+              {result.compensating ? "Compensating" : "Not Compensating"}
+            </div>
+
+            {isClinician && (
+              <div className="grid grid-cols-3 gap-3 text-center text-sm">
+                <div>
+                  <p className="text-muted-foreground">Left agitation</p>
+                  <p className="font-semibold tabular-nums text-foreground">{result.leftAgitation.toFixed(3)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Right agitation</p>
+                  <p className="font-semibold tabular-nums text-foreground">{result.rightAgitation.toFixed(3)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Difference</p>
+                  <p className="font-semibold tabular-nums text-foreground">{(result.difference * 100).toFixed(1)}%</p>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Collecting data. Move around so we can measure agitation.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+type DualLiveImuCardProps = DualBleImuReturn & {
+  isClinician: boolean;
+};
+
+export function DualLiveImuCard(props: DualLiveImuCardProps) {
   const {
     supported,
     sensorA,
@@ -218,9 +279,30 @@ export function DualLiveImuCard() {
     startCalibration,
     right,
     left,
-  } = useDualBleImu();
+    isClinician,
+  } = props;
   const [secondsRemaining, setSecondsRemaining] = useState(CALIBRATION_SECONDS);
-  const combinedAngleData = buildCombinedAngleData(left.points, right.points);
+  const [paused, setPaused] = useState(false);
+  const [snapshot, setSnapshot] = useState<{ left: ImuChartPoint[]; right: ImuChartPoint[] } | null>(null);
+
+  const handlePauseToggle = useCallback(() => {
+    setPaused((prev) => {
+      if (!prev) {
+        setSnapshot({ left: left.points, right: right.points });
+      } else {
+        setSnapshot(null);
+      }
+      return !prev;
+    });
+  }, [left.points, right.points]);
+
+  const displayLeft = paused && snapshot ? snapshot.left : left.points;
+  const displayRight = paused && snapshot ? snapshot.right : right.points;
+
+  const combinedAngleData = useMemo(
+    () => buildCombinedAngleData(displayLeft, displayRight).slice(-DISPLAY_WINDOW),
+    [displayLeft, displayRight],
+  );
 
   useEffect(() => {
     if (calibrationPhase !== "recording") {
@@ -309,90 +391,95 @@ export function DualLiveImuCard() {
 
       {assignment && calibrationPhase === "done" && (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <SideDisplay
-              side="left"
-              points={left.points}
-              filterMode={left.filterMode}
-              setFilterMode={left.setFilterMode}
-              windowSize={left.windowSize}
-              setWindowSize={left.setWindowSize}
-            />
-            <SideDisplay
-              side="right"
-              points={right.points}
-              filterMode={right.filterMode}
-              setFilterMode={right.setFilterMode}
-              windowSize={right.windowSize}
-              setWindowSize={right.setWindowSize}
-            />
-          </div>
-
-          <Card className="border-0 bg-white">
-            <CardHeader className="px-6 pt-6 pb-3">
-              <CardTitle className="text-foreground text-lg">ang2 comparison</CardTitle>
-            </CardHeader>
-            <CardContent className="px-6 pb-6">
-              <div className="w-full overflow-hidden rounded-lg border border-border bg-background min-h-[280px]">
-                {combinedAngleData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <LineChart
-                      data={combinedAngleData}
-                      margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis
-                        dataKey="time"
-                        tick={{ fontSize: 10 }}
-                        tickFormatter={(v) => {
-                          try {
-                            const d = new Date(v);
-                            return isNaN(d.getTime()) ? String(v) : d.toLocaleTimeString();
-                          } catch {
-                            return String(v);
-                          }
-                        }}
-                      />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip
-                        labelFormatter={(v) => {
-                          try {
-                            const d = new Date(v);
-                            return isNaN(d.getTime()) ? String(v) : d.toLocaleTimeString();
-                          } catch {
-                            return String(v);
-                          }
-                        }}
-                      />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="leftAng2"
-                        name="Left ang2"
-                        stroke="#8884d8"
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="rightAng2"
-                        name="Right ang2"
-                        stroke="#82ca9d"
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex h-[280px] items-center justify-center text-muted-foreground text-sm">
-                    No angle data yet.
-                  </div>
-                )}
+          {isClinician && (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <SideDisplay
+                  side="left"
+                  points={left.points}
+                  filterMode={left.filterMode}
+                  setFilterMode={left.setFilterMode}
+                  windowSize={left.windowSize}
+                  setWindowSize={left.setWindowSize}
+                />
+                <SideDisplay
+                  side="right"
+                  points={right.points}
+                  filterMode={right.filterMode}
+                  setFilterMode={right.setFilterMode}
+                  windowSize={right.windowSize}
+                  setWindowSize={right.setWindowSize}
+                />
               </div>
-            </CardContent>
-          </Card>
+
+              <Card className="border-0 bg-white">
+                <CardHeader className="px-6 pt-6 pb-3 flex flex-row items-center justify-between">
+                  <CardTitle className="text-foreground text-lg">ang2 comparison</CardTitle>
+                  <Button
+                    type="button"
+                    variant={paused ? "default" : "outline"}
+                    size="sm"
+                    onClick={handlePauseToggle}
+                  >
+                    {paused ? "Resume" : "Pause"}
+                  </Button>
+                </CardHeader>
+                <CardContent className="px-6 pb-6">
+                  <div className="w-full overflow-hidden rounded-lg border border-border bg-background min-h-[280px]">
+                    {combinedAngleData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={280}>
+                        <LineChart
+                          data={combinedAngleData}
+                          margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis
+                            dataKey="idx"
+                            type="number"
+                            tick={{ fontSize: 10 }}
+                            domain={["dataMin", "dataMax"]}
+                          />
+                          <YAxis tick={{ fontSize: 10 }} />
+                          <Tooltip
+                            labelFormatter={(v) => `Sample ${v}`}
+                          />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="leftAng2"
+                            name="Left ang2"
+                            stroke="#8884d8"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="rightAng2"
+                            name="Right ang2"
+                            stroke="#82ca9d"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex h-[280px] items-center justify-center text-muted-foreground text-sm">
+                        No angle data yet.
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          <AgitationPanel
+            leftPoints={displayLeft}
+            rightPoints={displayRight}
+            isClinician={isClinician}
+          />
         </>
       )}
     </div>

@@ -27,11 +27,15 @@ export type ImuChartPoint = {
 
 const RAD2DEG = 180 / Math.PI;
 
-/** Compute ang1 = atan2(ay, az) and ang2 = atan2(az, ay) in degrees. */
-export function imuAnglesFromAyAz(ay: number, az: number): { ang1: number; ang2: number } {
+/**
+ * Compute tilt angles using all three accelerometer axes.
+ * ang1 = tilt from Z-axis, ang2 = tilt from Y-axis.
+ * Range [0°, 180°] — no wrapping at 90°.
+ */
+export function imuAngles(ax: number, ay: number, az: number): { ang1: number; ang2: number } {
   return {
-    ang1: Math.atan2(ay, az) * RAD2DEG,
-    ang2: Math.atan2(az, ay) * RAD2DEG,
+    ang1: Math.atan2(Math.sqrt(ax * ax + ay * ay), az) * RAD2DEG,
+    ang2: Math.atan2(Math.sqrt(ax * ax + az * az), ay) * RAD2DEG,
   };
 }
 

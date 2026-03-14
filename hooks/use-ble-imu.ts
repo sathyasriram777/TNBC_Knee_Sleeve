@@ -10,7 +10,7 @@ import {
   movingAvg,
   parseBleImuCsv,
 } from "@/lib/ble-imu";
-import { type ImuChartPoint, imuAnglesFromAyAz } from "@/lib/chart-data";
+import { type ImuChartPoint, imuAngles } from "@/lib/chart-data";
 
 // Web Bluetooth API (minimal types; not in default DOM lib)
 interface BleDevice {
@@ -113,7 +113,7 @@ export function useBleImu() {
     }
 
     const time = new Date().toISOString();
-    const { ang1, ang2 } = imuAnglesFromAyAz(ay, az);
+    const { ang1, ang2 } = imuAngles(ax, ay, az);
     pendingRef.current.push({ time, ax, ay, az, ang1, ang2 });
 
     if (rafIdRef.current === null) {
@@ -132,9 +132,11 @@ export function useBleImu() {
 
     try {
       const nav = navigator as Navigator & { bluetooth?: { requestDevice(opts: object): Promise<BleDevice> } };
-      // Show all nearby BLE devices; no name/service filter. User picks the IMU device.
       const device = await nav.bluetooth!.requestDevice({
-        acceptAllDevices: true,
+        filters: [
+          { namePrefix: "Nano" },
+          { namePrefix: "Arduino" },
+        ],
         optionalServices: [BLE_IMU_SERVICE_UUID],
       });
 

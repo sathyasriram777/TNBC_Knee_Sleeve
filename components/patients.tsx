@@ -38,7 +38,7 @@ export function Patients({ initialPatients }: PatientsProps) {
       setPatients((prev) => [...prev, result.patient]);
       setNewPatientName("");
       setShowAddForm(false);
-      router.push(`/protected/get-data?patient=${result.patient.id}`);
+      router.push(`/protected/diagnostics?patient=${result.patient.id}`);
     } else {
       setAddError(result.error);
     }
