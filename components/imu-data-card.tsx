@@ -11,7 +11,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ImuChartPoint } from "@/lib/chart-data";
 
@@ -44,11 +43,8 @@ export function ImuDataCard({ data = [], live = false }: ImuDataCardProps) {
 
   return (
     <Card className="border-0 bg-white w-full">
-      <CardHeader className="flex flex-row items-center justify-between px-8 pt-8 pb-4">
+      <CardHeader className="px-8 pt-8 pb-4">
         <CardTitle className="text-foreground">IMU Data</CardTitle>
-        <Button variant="secondary" size="sm">
-          Insights
-        </Button>
       </CardHeader>
       <CardContent className="px-8 pb-8">
         <div className="w-full overflow-hidden rounded-lg border border-border bg-background min-h-[280px]">
